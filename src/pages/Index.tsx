@@ -2,11 +2,12 @@ import { useState } from "react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { ArtGallery } from "@/components/ArtGallery";
 import { StyleSelector } from "@/components/StyleSelector";
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Heart, Share2, Sparkles, Trophy, Palette } from "lucide-react";
+import { Heart, Share2, Trophy, Palette } from "lucide-react";
 import { transformImage, checkPredictionStatus } from "@/services/replicateService";
 import { artStyles, ArtStyle } from "@/types/artStyles";
 
@@ -131,27 +132,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
       <main className="container mx-auto px-4 py-8 space-y-12">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center space-y-6"
-        >
-          <div className="inline-flex items-center space-x-2 bg-white/30 px-4 py-2 rounded-full backdrop-blur-sm border border-white/50 shadow-lg">
-            <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-            <span className="text-sm font-medium bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-              AI-Powered Art Transformation
-            </span>
-          </div>
-          <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-secondary">
-            FolkFusion
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            Transform your contemporary art into beautiful Kalamkari style using our
-            AI-powered platform. Join our creative community and explore the fusion of
-            tradition and technology.
-          </p>
-        </motion.div>
+        <Header />
 
         <motion.section
           initial={{ opacity: 0 }}
