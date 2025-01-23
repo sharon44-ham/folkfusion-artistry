@@ -8,15 +8,14 @@ const uploadImageToStorage = async (file: File): Promise<string> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
     
-    // Convert File to ArrayBuffer to avoid LockManager issues
-    const arrayBuffer = await file.arrayBuffer();
-    const fileData = new Uint8Array(arrayBuffer);
+    // Convert File to Blob to avoid LockManager issues
+    const blob = new Blob([await file.arrayBuffer()], { type: file.type });
     
     console.log('Uploading file:', fileName);
     
     const { data, error } = await supabase.storage
       .from('artworks')
-      .upload(fileName, fileData, {
+      .upload(fileName, blob, {
         contentType: file.type,
         cacheControl: '3600'
       });
