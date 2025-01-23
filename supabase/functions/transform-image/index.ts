@@ -37,19 +37,22 @@ serve(async (req) => {
       throw new Error('Failed to create transformation record')
     }
 
-    // Call OpenAI API
-    const openaiResponse = await fetch('https://api.openai.com/v1/images/variations', {
+    console.log('Created transformation record:', transformation)
+
+    // Call OpenAI API for image generation
+    const openaiResponse = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        image: imageUrl,
+        prompt: `Transform this image in the style of ${prompt}. Create a highly detailed artistic interpretation that maintains the core subject matter while applying the artistic style. The result should be vibrant and visually striking.`,
         n: 1,
         size: "1024x1024",
         model: "dall-e-3",
-        prompt: `Transform this image in the style of ${prompt}. Maintain the core subject matter while applying the artistic style.`,
+        quality: "hd",
+        style: "vivid"
       }),
     })
 
@@ -67,6 +70,8 @@ serve(async (req) => {
     }
 
     const data = await openaiResponse.json()
+    console.log('OpenAI API response:', data)
+    
     const transformedImageUrl = data.data[0].url
 
     // Update transformation record with result
