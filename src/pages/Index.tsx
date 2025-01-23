@@ -78,19 +78,25 @@ const Index = () => {
     setTransformationProgress(0);
 
     try {
-      const imageUrl = "YOUR_UPLOADED_IMAGE_URL";
-      
       const style = artStyles.find(s => s.id === selectedStyleId);
       if (!style) throw new Error("Style not found");
 
+      console.log('Starting transformation with:', { 
+        imageFile: selectedImage, 
+        styleId: style.id 
+      });
+
       const prediction = await transformImage(
-        imageUrl,
+        selectedImage,
         style.modelId,
         `Transform this image in the style of ${style.name} art`
       );
 
+      console.log('Transformation initiated:', prediction);
+
       const pollInterval = setInterval(async () => {
         const status = await checkPredictionStatus(prediction.id);
+        console.log('Transformation status:', status);
         
         if (status.status === "succeeded") {
           clearInterval(pollInterval);
@@ -100,7 +106,7 @@ const Index = () => {
           const newArtwork = {
             id: prediction.id,
             title: `${style.name} Transformation`,
-            originalUrl: imageUrl,
+            originalUrl: URL.createObjectURL(selectedImage),
             transformedUrl: status.output[0],
             artist: "AI Artist",
             likes: 0,
