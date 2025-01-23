@@ -7,7 +7,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -16,6 +15,29 @@ serve(async (req) => {
     const { imageUrl, styleId, prompt } = await req.json()
     console.log('Received request:', { imageUrl, styleId, prompt })
 
+    // Create a new transformation record
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { data: transformation, error: insertError } = await supabase
+      .from('transformations')
+      .insert({
+        original_image_path: imageUrl,
+        style_id: styleId,
+        status: 'processing',
+        title: `${prompt} Transformation`
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('Database insert error:', insertError)
+      throw new Error('Failed to create transformation record')
+    }
+
+    // Call OpenAI API
     const openaiResponse = await fetch('https://api.openai.com/v1/images/variations', {
       method: 'POST',
       headers: {
@@ -34,25 +56,27 @@ serve(async (req) => {
     if (!openaiResponse.ok) {
       const error = await openaiResponse.json()
       console.error('OpenAI API error:', error)
+      
+      // Update transformation status to failed
+      await supabase
+        .from('transformations')
+        .update({ status: 'failed' })
+        .eq('id', transformation.id)
+        
       throw new Error('Failed to generate image transformation')
     }
 
     const data = await openaiResponse.json()
     const transformedImageUrl = data.data[0].url
 
-    // Update transformation status in database
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
+    // Update transformation record with result
     const { error: updateError } = await supabase
       .from('transformations')
       .update({
         transformed_image_path: transformedImageUrl,
         status: 'completed'
       })
-      .eq('style_id', styleId)
+      .eq('id', transformation.id)
 
     if (updateError) {
       console.error('Database update error:', updateError)
@@ -60,7 +84,10 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ url: transformedImageUrl }),
+      JSON.stringify({ 
+        id: transformation.id,
+        url: transformedImageUrl 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {

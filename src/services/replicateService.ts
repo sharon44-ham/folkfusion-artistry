@@ -1,38 +1,28 @@
-const REPLICATE_API_URL = "https://api.replicate.com/v1/predictions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const transformImage = async (
   imageUrl: string,
   modelId: string,
   prompt: string
 ) => {
-  console.log("Transforming image with Replicate API", { imageUrl, modelId, prompt });
+  console.log("Transforming image with Edge Function", { imageUrl, modelId, prompt });
   
   try {
-    const response = await fetch(REPLICATE_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Token ${process.env.REPLICATE_API_TOKEN}`,
-      },
-      body: JSON.stringify({
-        version: modelId,
-        input: {
-          image: imageUrl,
-          prompt: prompt,
-          num_outputs: 1,
-          guidance_scale: 7.5,
-          num_inference_steps: 50,
-        },
-      }),
+    const { data, error } = await supabase.functions.invoke('transform-image', {
+      body: {
+        imageUrl,
+        styleId: modelId,
+        prompt
+      }
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to transform image");
+    if (error) {
+      console.error("Edge Function error:", error);
+      throw error;
     }
 
-    const prediction = await response.json();
-    console.log("Replicate API response:", prediction);
-    return prediction;
+    console.log("Edge Function response:", data);
+    return data;
   } catch (error) {
     console.error("Error transforming image:", error);
     throw error;
@@ -41,19 +31,22 @@ export const transformImage = async (
 
 export const checkPredictionStatus = async (predictionId: string) => {
   try {
-    const response = await fetch(`${REPLICATE_API_URL}/${predictionId}`, {
-      headers: {
-        Authorization: `Token ${process.env.REPLICATE_API_TOKEN}`,
-      },
-    });
+    const { data, error } = await supabase
+      .from('transformations')
+      .select('*')
+      .eq('id', predictionId)
+      .single();
 
-    if (!response.ok) {
-      throw new Error("Failed to check prediction status");
+    if (error) {
+      console.error("Error checking prediction status:", error);
+      throw error;
     }
 
-    const prediction = await response.json();
-    console.log("Prediction status:", prediction);
-    return prediction;
+    console.log("Prediction status:", data);
+    return {
+      status: data.status,
+      output: data.transformed_image_path ? [data.transformed_image_path] : null
+    };
   } catch (error) {
     console.error("Error checking prediction status:", error);
     throw error;
