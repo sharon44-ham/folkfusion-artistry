@@ -1,1 +1,13 @@
 project_id = "uodukafjyzjcfrjnupvv"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[db]
+port = 54322
+
+[functions]
+[functions.transform-image]
+verify_jwt = true

@@ -1,0 +1,73 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  try {
+    const { imageUrl, styleId, prompt } = await req.json()
+    console.log('Received request:', { imageUrl, styleId, prompt })
+
+    const openaiResponse = await fetch('https://api.openai.com/v1/images/variations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        image: imageUrl,
+        n: 1,
+        size: "1024x1024",
+        model: "dall-e-3",
+        prompt: `Transform this image in the style of ${prompt}. Maintain the core subject matter while applying the artistic style.`,
+      }),
+    })
+
+    if (!openaiResponse.ok) {
+      const error = await openaiResponse.json()
+      console.error('OpenAI API error:', error)
+      throw new Error('Failed to generate image transformation')
+    }
+
+    const data = await openaiResponse.json()
+    const transformedImageUrl = data.data[0].url
+
+    // Update transformation status in database
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { error: updateError } = await supabase
+      .from('transformations')
+      .update({
+        transformed_image_path: transformedImageUrl,
+        status: 'completed'
+      })
+      .eq('style_id', styleId)
+
+    if (updateError) {
+      console.error('Database update error:', updateError)
+      throw new Error('Failed to update transformation status')
+    }
+
+    return new Response(
+      JSON.stringify({ url: transformedImageUrl }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  } catch (error) {
+    console.error('Error in transform-image function:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    )
+  }
+})
