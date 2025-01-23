@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Heart, Share2, Sparkles, Trophy, Palette } from "lucide-react";
 import { transformImage, checkPredictionStatus } from "@/services/replicateService";
+import { artStyles, ArtStyle } from "@/types/artStyles";
 
 const Index = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -54,7 +55,7 @@ const Index = () => {
     });
   };
 
-  const handleStyleSelect = (style: any) => {
+  const handleStyleSelect = (style: ArtStyle) => {
     setSelectedStyleId(style.id);
     toast({
       title: `${style.name} style selected`,
