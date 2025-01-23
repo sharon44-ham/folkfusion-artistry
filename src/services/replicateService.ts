@@ -1,28 +1,43 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const uploadImageToStorage = async (file: File): Promise<string> => {
-  console.log('Uploading image to Supabase storage');
+  console.log('Starting image upload to Supabase storage');
   
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Math.random()}.${fileExt}`;
-  const filePath = `${fileName}`;
+  try {
+    // Create a unique filename
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    
+    // Convert File to ArrayBuffer to avoid LockManager issues
+    const arrayBuffer = await file.arrayBuffer();
+    const fileData = new Uint8Array(arrayBuffer);
+    
+    console.log('Uploading file:', fileName);
+    
+    const { data, error } = await supabase.storage
+      .from('artworks')
+      .upload(fileName, fileData, {
+        contentType: file.type,
+        cacheControl: '3600'
+      });
 
-  const { data, error } = await supabase.storage
-    .from('artworks')
-    .upload(filePath, file);
+    if (error) {
+      console.error('Error uploading to storage:', error);
+      throw error;
+    }
 
-  if (error) {
-    console.error('Error uploading image:', error);
+    console.log('Upload successful:', data);
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('artworks')
+      .getPublicUrl(fileName);
+
+    console.log('Generated public URL:', publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error('Upload error:', error);
     throw error;
   }
-
-  console.log('Image uploaded successfully:', data);
-
-  const { data: { publicUrl } } = supabase.storage
-    .from('artworks')
-    .getPublicUrl(filePath);
-
-  return publicUrl;
 };
 
 export const transformImage = async (
